@@ -27,6 +27,18 @@ const OPTIONS: { option: ModeOption; icon: string; label: string }[] = [
   { option: ModeOption.LOW_POWER, icon: 'lowpower', label: MODE_OPTION_LABEL[ModeOption.LOW_POWER] },
 ]
 
+/**
+ * The hardware only reports battery in 25%-wide steps (0/25/50/75/100), so
+ * a reading like "75%" really means "somewhere between 50% and 75%" — show
+ * that range instead of implying more precision than the sensor has. 100%
+ * has the same ambiguity (could be anywhere from 75~100%), so only the
+ * empty reading is a true single value.
+ */
+function batteryRangeText(percent: number): string {
+  if (percent <= 0) return '0%'
+  return `${percent - 25}~${percent}%`
+}
+
 export function mountDeviceScreen(root: HTMLElement, initialName: string, handlers: DeviceScreenHandlers) {
   const statusDot = el('span', { class: 'status-dot' })
   const deviceNameEl = el('span', {}, initialName)
@@ -161,7 +173,7 @@ export function mountDeviceScreen(root: HTMLElement, initialName: string, handle
     const shell = state.isCharging
       ? el('div', { class: 'battery-shell' }, fill, chargeBolt())
       : el('div', { class: 'battery-shell' }, fill)
-    batteryEl.replaceChildren(shell, el('span', {}, `${state.batteryPercent}%`))
+    batteryEl.replaceChildren(shell, el('span', {}, batteryRangeText(state.batteryPercent)))
 
     const canAdjust = state.isRunning && state.supportsTargetTemp
     minusButton.disabled = !canAdjust
