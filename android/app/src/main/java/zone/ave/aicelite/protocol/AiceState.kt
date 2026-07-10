@@ -144,8 +144,8 @@ const val BATTERY_RAW_FULL = 6
 /**
  * A decoded 16-byte state buffer. The device and the app exchange the *entire*
  * state on every change; a command is just this buffer with one byte edited and
- * the whole thing re-sent (§5). Always keep [raw] around — bytes 1–5, 7 and 8
- * are still unnamed and must be echoed back verbatim.
+ * the whole thing re-sent (§5). Always keep [raw] around — bytes 4 and 5 are
+ * still unnamed and must be echoed back verbatim.
  */
 @Immutable
 class AiceState(raw: ByteArray) {

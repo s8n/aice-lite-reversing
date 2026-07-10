@@ -27,9 +27,9 @@ Web Bluetooth requires a secure context; `localhost` counts, `file://` does not.
 npm test           # node --test — the protocol/store layer, no browser needed
 ```
 
-34 tests cover the CRC codec against the five frames captured live in PROTOCOL.md
-§4, the state model's field decoding, every command builder, and the store's
-echo-adoption and wind-drag-throttle behavior.
+Tests cover the CRC codec against the five frames captured live in PROTOCOL.md
+§4, the state model's field decoding, every command builder, the ack-gate's
+serialization, and the store's echo-adoption and wind-drag-throttle behavior.
 
 ## Build
 
@@ -47,8 +47,15 @@ npm run preview      # serve the production build locally
 | §5 command operations | `src/protocol/commands.ts` |
 | §5 ⚑ `FF FF FF FF` command header, §6 echo adoption, wind-drag throttle | `src/store.ts` |
 | §2 GATT map, write type, notifications, DIS firmware read | `src/ble/client.ts` |
+| GATT write serialization (no per-platform §, mirrors the Android app's mutex queue) | `src/ble/ack-gate.ts` |
 
-Three things are easy to break, same as the Android app:
+Four things are easy to break, same as the Android app:
+
+**GATT writes must not overlap.** A command sent while the previous one is still
+awaiting its echo would get dropped by some stacks, so `AckGate` holds at most one
+in-flight frame and one pending frame — a newer edit replaces the pending one rather
+than queuing behind it, since every frame is a full-state resend anyway. A timeout
+guards against a dropped echo stalling the gate forever.
 
 **Every command carries `payload[0..3] = FF FF FF FF`.** Stamped in `store.ts`'s
 `enqueue`, never on the buffer the UI reads — so a device echo can never be mistaken
@@ -68,7 +75,7 @@ after release — a lagging echo must not yank the slider back under the user's 
 ## Debug panel
 
 Settings → Debug. Shows the live 16-byte state buffer decoded byte-by-byte, a raw
-TX/RX hex log, and arbitrary frame injection — the tool for closing PROTOCOL.md §9's
+TX/RX hex log, and arbitrary frame injection — the tool for closing PROTOCOL.md §8's
 open questions (wind range, AI temp bounds, battery endpoints, bytes `[4]`/`[5]`).
 
 ## Not implemented

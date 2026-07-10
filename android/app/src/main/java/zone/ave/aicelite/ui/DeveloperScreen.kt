@@ -44,7 +44,7 @@ import zone.ave.aicelite.ui.theme.Ink
 
 /**
  * Reached by tapping the firmware version five times. This is the tool for
- * closing out PROTOCOL.md §9 — watch bytes 1–5, 7 and 8 while the battery
+ * closing out PROTOCOL.md §8 — watch bytes 4 and 5 while the battery
  * drains, or poke a byte and see what the device does.
  */
 @Composable

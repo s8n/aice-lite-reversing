@@ -9,7 +9,7 @@ The Android SDK must have platform `android-36`. No `local.properties` is needed
 `$ANDROID_HOME` is set.
 
 ```sh
-./gradlew :app:testDebugUnitTest    # 19 protocol tests, no device needed
+./gradlew :app:testDebugUnitTest    # protocol tests, no device needed
 ./gradlew :app:assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -26,25 +26,27 @@ because pre-12 Android classifies a BLE scan as a location capability.
 | §5 16-byte state payload, §5a flags, §5b options | `protocol/AiceState.kt` |
 | §5 command operations | `protocol.Commands` |
 | §2 GATT map, Write Command, notifications | `ble/AiceBleClient.kt` |
-| §5c 32-byte light/voice config frame | `AiceCodec.configPayload` + `AiceViewModel` |
 
 Three things are easy to break and worth knowing before you touch this code:
 
 **A command is the whole state.** There are no per-command packets. Every command
 copies the last 16-byte buffer received from the device, edits one byte, and resends
 all 16. The buffer is seeded from the first `ff03` notification and never synthesized
-— bytes 1–5, 7 and 8 are still unidentified and are echoed back verbatim. Until that
-first notification arrives the UI shows "Waiting for the first status frame…" and the
-controls stay inert.
+— bytes 4 and 5 are still unidentified constants and are echoed back verbatim. Until
+that first notification arrives the UI shows "Waiting for the first status frame…" and
+the controls stay inert.
 
 **GATT operations must not overlap.** Android silently drops a write issued while
-another is in flight, so every operation goes through a mutex-guarded queue that waits
-for its callback. Wind-slider drags are throttled to one frame per 120 ms, with the
-final value sent on release.
+another is in flight, so every operation goes through a mutex-guarded queue
+(`AiceBleClient`'s `opMutex`) that waits for its callback. Wind-slider drags are
+throttled to one frame per 120 ms.
 
-For ~900 ms after a local edit, an arriving device frame contributes only its ambient
-temperature (`AiceState.withTelemetryFrom`) rather than replacing the buffer. Without
-that, a slow echo yanks the wind slider backwards under your finger.
+**The device is authoritative, except mid-drag.** `AiceViewModel.mergeFromDevice`
+adopts every incoming device frame as-is — including a PID-picked target temp that
+doesn't match what was sent. The one exception is the wind level: while
+`windDragging` is set (during the drag and for 500 ms after the finger lifts), the
+local wind byte is kept and the rest of the incoming frame is still adopted. Without
+that grace period, a lagging echo yanks the slider back under your finger.
 
 ## Not implemented
 

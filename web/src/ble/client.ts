@@ -37,7 +37,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Web Bluetooth transport for the RANVOO AICE Lite (PROTOCOL.md §2, §7).
+ * Web Bluetooth transport for the RANVOO AICE Lite (PROTOCOL.md §2).
  * `ff04` advertises only the `write` property, so Chrome emits an ATT Write
  * Request; the firmware accepts it once the frame carries the FF FF FF FF
  * command header (stamped upstream, by the store). This client prefers

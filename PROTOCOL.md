@@ -85,11 +85,9 @@ OTA writes are write-with-response.
 **Android note.** Both `BluetoothGatt.writeCharacteristic(char, value,
 WRITE_TYPE_NO_RESPONSE)` (API 33+) and the legacy `setWriteType` +
 `writeCharacteristic(char)` path emit `0x52` and drive the device (verified on
-hardware); the `android/` app uses the modern one. No bonding, no `requestMtu`
-(20-byte frames fit the default MTU 23). Enable notifications on `ff03` (write
-`01 00` to CCCD `0x0024`); seed the command buffer from the first `ff03` notification,
-then edit one byte per command, set `payload[0..3]=FF FF FF FF` (§5), recompute the
-CRC, and write to `ff04`.
+hardware); the `android/` app uses the modern one. No `requestMtu` needed (20-byte
+frames fit the default MTU 23). Enable notifications on `ff03` (write `01 00` to
+CCCD `0x0024`), then build commands per §5's recipe.
 
 **Which characteristic (confirmed `ff04`, two independent ways).** Control frames go to
 **`ff04`**, not `ff01`.
@@ -114,9 +112,8 @@ CRC, and write to `ff04`.
 
 Writing to `ff01` gets ACK'd (it is writable) but the firmware's command handler isn't
 there, so the device silently ignores it — "command does nothing". Control goes to
-`ff04` only. (`ff04` advertises only the `write` property — no `write-without-response`
-bit — but that does not matter: both Android's forced no-response write and Chrome's
-with-response write reach the handler; see the write-type note above.)
+`ff04` only (see the write-type note above for why both opcodes reach it despite
+`ff04` advertising only the `write` property).
 
 > ⚠ **UUID discrepancy (static vs live).** The decompiled Dart
 > (`BleController._initQualifiedCharacteristic`) parses `0000fff1`/`0000fff2`
@@ -270,7 +267,7 @@ the byte(s) below, recompute the CRC over the edited payload, write to `ff04`.
 | **Pause** | `buf[6]` | `1` (paused/idle) |
 | **Resume** | `buf[6]` | `2` (running) |
 | **Set mode** | `buf[10]` | **`1`=cooling, `2`=heating, `3`=wind, `4`=AI** (send codes; device echoes AI as `6`). Requires running (`buf[6]==2`), refused while paused or off. |
-| **Temp up / down** | `buf[12]` | `± 1`, clamped to the mode range. Requires running; fan mode has no target temp. (Requires running, refused while paused/off) |
+| **Temp up / down** | `buf[12]` | `± 1`, clamped to the mode range. Requires running, refused while paused/off; fan mode has no target temp. |
 | **Wind level** | `buf[13]` | `0–100`, from the drag ratio (Requires running, refused while paused/off) |
 | **Mode option** | `buf[14]` | `1`=Silent, `2`=Hot Pack, `3`=Cooling First, `4`=Low Power; **`0xFF` to clear** (§5b) (requires running, refused while paused/off) |
 
@@ -278,10 +275,9 @@ So, e.g., to **turn cooling on at 22 °C, wind 41**, take the current state, set
 `buf[0..3]=FF FF FF FF, buf[6]=2, buf[10]=1, buf[12]=22, buf[13]=41`, wrap in the §3
 frame, and write to **`ff04`** as a Write Command.
 
-> ⚠ A command that keeps the device's own `02 00 00 00` header (instead of
-> `FF FF FF FF`) is ACKed by the stack and ignored by the firmware — which looks
-> exactly like a broken write path. If commands do nothing, check `payload[0..3]`
-> **before** you go debugging ATT opcodes, characteristics, or MTU.
+> ⚠ Forgetting the `FF FF FF FF` header (§5 ⚑ above) looks exactly like a broken
+> write path — ACKed, but silently ignored. If commands do nothing, check
+> `payload[0..3]` **before** you go debugging ATT opcodes, characteristics, or MTU.
 
 ### 5a. Payload[9] — flags byte (light + sound toggles)  *(confirmed live)*
 
@@ -386,7 +382,7 @@ build of the official app, 2026-07-10):
 - **`FF FF FF FF` command header** — the command/status discriminator (§5 ⚑); the
   single fact that gates a working controller.
 - **Write path** — `ff04` accepts *both* a Write Command (`0x52`) and a Write Request
-  (`0x12`) once the header is right, so **Web Bluetooth drives the device** (§2, §7);
+  (`0x12`) once the header is right, so **Web Bluetooth drives the device** (§2);
   the "monitor only" verdict is retracted.
 - **Mode** send codes `1/2/3/4`, AI echoes `6` (§5 byte 10); AI = PID.
 - **Mode options** `1/2/3/4`/`0xFF`, mutually exclusive (§5b).
