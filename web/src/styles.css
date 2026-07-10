@@ -441,6 +441,7 @@ button {
   position: relative;
   width: 44px;
   height: 26px;
+  margin: -4px 0;
   border-radius: 13px;
   border: 1px solid var(--outline);
   background: var(--surface-elevated);
@@ -471,6 +472,7 @@ button {
 .unit-picker {
   display: flex;
   gap: 2px;
+  margin: -9px 0;
   background: var(--surface-elevated);
   border-radius: 20px;
   padding: 3px;
