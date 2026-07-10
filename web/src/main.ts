@@ -71,12 +71,17 @@ function main(): void {
   let connected = false
 
   const connectButton = el('button', { class: 'connect-button' }, 'Connect')
+  // Shown only while a background tryAutoReconnect() is in flight. The button
+  // itself stays a plain, enabled "Connect" (the remembered device may be out
+  // of range), so this line is the sole signal that an attempt is running.
+  const connectStatus = el('p', { class: 'connect-status' })
   const connectScreen = el(
     'div',
     { class: 'connect-screen' },
     el('h1', {}, 'PIDCE LITE'),
     el('p', { class: 'unsupported-note' }, 'Connect to your AICE Lite neck air conditioner.'),
     connectButton,
+    connectStatus,
     buildFlagHint(),
   )
 
@@ -146,6 +151,7 @@ function main(): void {
       connectButton.textContent =
         conn.kind === 'connecting' ? 'Connecting…' : conn.kind === 'reconnecting' ? 'Reconnecting…' : 'Connect'
       connectButton.disabled = conn.kind === 'connecting' || conn.kind === 'reconnecting'
+      connectStatus.textContent = conn.kind === 'auto-reconnecting' ? 'Looking for your last device…' : ''
       renderRoute()
     },
     onFirmware: (fw) => {
