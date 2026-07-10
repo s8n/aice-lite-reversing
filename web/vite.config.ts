@@ -6,8 +6,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'PIDCE Lite',
-        short_name: 'PIDCE Lite',
+        name: 'PIDCE Web',
+        short_name: 'PIDCE Web',
         description: 'Controller for the RANVOO AICE Lite neck air conditioner',
         theme_color: '#08090C',
         background_color: '#08090C',
