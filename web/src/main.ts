@@ -87,7 +87,12 @@ function main(): void {
 
   const deviceRoot = el('div', { class: 'screen' })
   const deviceScreen = mountDeviceScreen(deviceRoot, DEFAULT_NAME, {
-    onPower: () => store.togglePower(),
+    onPower: () => {
+      // Powering off drops the BLE link; mark it expected so we settle to a
+      // usable Connect button rather than the blocking "Reconnecting…" loop.
+      if (store.state?.isPowered) client.expectPowerOff()
+      store.togglePower()
+    },
     onPause: () => store.togglePause(),
     onTempDelta: (delta) => store.adjustTemp(delta),
     onWindPreview: (level) => store.previewWind(level),

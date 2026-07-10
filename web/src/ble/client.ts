@@ -67,6 +67,7 @@ export class AiceBleClient {
   private writeQueue: Promise<void> = Promise.resolve()
   private backoffMs = MIN_BACKOFF_MS
   private reconnecting = false
+  private expectPowerOffDisconnect = false
   private autoReconnectController: AbortController | null = null
   private listener: AiceBleListener = {}
   private readonly ackGate: AckGate
@@ -203,11 +204,30 @@ export class AiceBleClient {
     })
   }
 
+  /**
+   * The device drops the BLE link a moment after it acts on a power-off
+   * command. Mark that disconnect as expected so `handleDisconnected` settles
+   * to a plain, usable disconnected state (Connect button) instead of the
+   * blocking retry loop — otherwise turning the unit off would lock the UI
+   * into "Reconnecting…" against a device that's now off and won't answer.
+   * We don't kick off a background reconnect either: the unit is off and
+   * won't advertise, so there's nothing to reconnect to until the user acts.
+   */
+  expectPowerOff(): void {
+    this.expectPowerOffDisconnect = true
+  }
+
   private handleDisconnected = (): void => {
     this.controlChar = null
     this.ackGate.reset()
     this.listener.onState?.(null)
-    if (!this.reconnecting) this.beginReconnect()
+    if (this.reconnecting) return
+    if (this.expectPowerOffDisconnect) {
+      this.expectPowerOffDisconnect = false
+      this.listener.onConnection?.({ kind: 'disconnected' })
+      return
+    }
+    this.beginReconnect()
   }
 
   private beginReconnect(): void {
@@ -297,6 +317,7 @@ export class AiceBleClient {
   disconnect(): void {
     this.cancelAutoReconnect()
     this.reconnecting = false
+    this.expectPowerOffDisconnect = false
     this.ackGate.reset()
     this.device?.gatt?.disconnect()
     this.device = null
