@@ -5,6 +5,7 @@ export type StoreListener = (state: AiceState | null) => void
 
 const WIND_DRAG_THROTTLE_MS = 120
 const WIND_SETTLE_MS = 500
+const TEMP_TX_INTERVAL_MS = 1000
 
 export class AiceStore {
   private current: AiceState | null = null
@@ -12,6 +13,8 @@ export class AiceStore {
   private windDragging = false
   private windThrottleTimer: ReturnType<typeof setTimeout> | null = null
   private windSettleTimer: ReturnType<typeof setTimeout> | null = null
+  private tempSendTimer: ReturnType<typeof setTimeout> | null = null
+  private tempSendPending: AiceState | null = null
   private readonly send: (frame: Uint8Array) => void
 
   constructor(send: (frame: Uint8Array) => void) {
@@ -80,7 +83,22 @@ export class AiceStore {
   adjustTemp(delta: number): void {
     const s = this.current
     if (s === null) return
-    this.apply(Commands.adjustTemp(s, delta))
+    const next = Commands.adjustTemp(s, delta)
+    if (next === null) return
+    this.current = next
+    this.notify()
+    this.tempSendPending = next
+    if (this.tempSendTimer === null) this.flushTempSend()
+  }
+
+  private flushTempSend(): void {
+    const pending = this.tempSendPending
+    this.tempSendPending = null
+    if (pending !== null) this.enqueue(pending)
+    this.tempSendTimer = setTimeout(() => {
+      this.tempSendTimer = null
+      if (this.tempSendPending !== null) this.flushTempSend()
+    }, TEMP_TX_INTERVAL_MS)
   }
 
   previewWind(level: number): void {

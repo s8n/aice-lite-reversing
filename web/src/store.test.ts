@@ -82,6 +82,29 @@ test('after the drag settles (500ms after release), the echo takes over the wind
   assert.equal(store.state!.windLevel, 65)
 })
 
+test('temp adjustments send immediately then throttle to one command per second', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const sent: Uint8Array[] = []
+  const store = new AiceStore((frame) => sent.push(frame))
+  store.onDeviceFrame(poweredOnState({ [Idx.TARGET_TEMP]: 20 }))
+  store.adjustTemp(1)
+  assert.equal(sent.length, 1, 'the first press sends immediately')
+  assert.equal(sent[0][Idx.TARGET_TEMP], 21)
+
+  store.adjustTemp(1)
+  store.adjustTemp(1)
+  store.adjustTemp(1)
+  assert.equal(store.state!.targetTempC, 24, 'the UI reflects every press right away')
+  assert.equal(sent.length, 1, 'no extra frame yet — still inside the throttle window')
+
+  t.mock.timers.tick(1000)
+  assert.equal(sent.length, 2, 'the window flushes exactly one frame with the latest value')
+  assert.equal(sent[1][Idx.TARGET_TEMP], 24)
+
+  t.mock.timers.tick(1000)
+  assert.equal(sent.length, 2, 'no further presses means no further frames')
+})
+
 test('toggleModeOption clears the active option on a second tap of the same one', () => {
   const store = new AiceStore(() => {})
   store.onDeviceFrame(poweredOnState())
