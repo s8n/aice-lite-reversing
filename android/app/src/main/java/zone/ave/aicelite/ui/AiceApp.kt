@@ -131,7 +131,7 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("AICE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
+        Text("PIDCE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
         Spacer(Modifier.height(16.dp))
         Text(
             "This app talks to the neck cooler over Bluetooth Low Energy, so Android needs " +

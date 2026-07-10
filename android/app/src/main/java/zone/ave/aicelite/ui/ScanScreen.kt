@@ -49,7 +49,7 @@ fun ScanScreen(
             .padding(24.dp),
     ) {
         Spacer(Modifier.height(40.dp))
-        Text("AICE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
+        Text("PIDCE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
         Spacer(Modifier.height(6.dp))
         Text(
             "Looking for a device advertising as “$DEVICE_NAME_PREFIX…”",

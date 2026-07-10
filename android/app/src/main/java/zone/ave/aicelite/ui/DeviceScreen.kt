@@ -116,7 +116,7 @@ private fun TopBar(deviceName: String, accent: Color, running: Boolean, onSettin
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("AICE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
+            Text("PIDCE LITE", style = MaterialTheme.typography.titleLarge, color = Ink.Primary)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Canvas(Modifier.size(6.dp)) {
                     drawCircle(if (running) accent else Ink.Tertiary)
