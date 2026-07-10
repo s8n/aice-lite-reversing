@@ -36,6 +36,8 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--ink-primary);
+  -webkit-user-select: none;
+  user-select: none;
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -403,6 +405,11 @@ button {
   color: var(--ink-secondary);
   font-size: 14px;
   line-height: 1.5;
+}
+.debug-screen,
+.flag-hint {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .flag-hint {
   max-width: 360px;

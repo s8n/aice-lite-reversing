@@ -111,7 +111,7 @@ function main(): void {
     },
   })
 
-  const debugRoot = el('div', { class: 'screen' })
+  const debugRoot = el('div', { class: 'screen debug-screen' })
   const debugScreen = mountDebugScreen(debugRoot, {
     onBack: () => {
       window.location.hash = 'settings'
