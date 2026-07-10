@@ -11,6 +11,16 @@ const DIS_FIRMWARE_UUID = 0x2a26
 const MIN_BACKOFF_MS = 1_000
 const MAX_BACKOFF_MS = 8_000
 
+/** Remembers which device to look for across page loads (see `tryAutoReconnect`). */
+const LAST_DEVICE_ID_KEY = 'aice-lite:last-device-id'
+
+/**
+ * How long to watch for an advertisement from a previously-paired device
+ * before giving up on auto-reconnect and leaving the manual Connect button
+ * as the fallback.
+ */
+const AUTO_RECONNECT_TIMEOUT_MS = 10_000
+
 /**
  * How long to wait for the device's echo before giving up and sending the
  * next queued command anyway. Generous relative to a typical unencrypted,
@@ -63,6 +73,15 @@ export class AiceBleClient {
     return 'bluetooth' in navigator
   }
 
+  /**
+   * Chrome's Persistent Device Permissions feature (`getDevices()`) lets a
+   * page look up devices the user has already granted access to, without a
+   * chooser or a user gesture. Firefox/Safari/older Chrome don't have it.
+   */
+  static get supportsPersistentPermissions(): boolean {
+    return AiceBleClient.isSupported && typeof navigator.bluetooth.getDevices === 'function'
+  }
+
   setListener(listener: AiceBleListener): void {
     this.listener = listener
   }
@@ -85,6 +104,67 @@ export class AiceBleClient {
       this.listener.onConnection?.({ kind: 'disconnected' })
       throw error
     }
+  }
+
+  /**
+   * Alternate path for browsers with Persistent Device Permissions: skips
+   * the chooser entirely and tries to reconnect to the last device this
+   * page connected to, falling back to whichever previously-granted device
+   * is available. Safe to call unconditionally on startup — it's a no-op
+   * (returns false) if the feature is unsupported, nothing was previously
+   * granted, or the device can't be reached, leaving the manual Connect
+   * button as the fallback either way.
+   */
+  async tryAutoReconnect(): Promise<boolean> {
+    if (!AiceBleClient.supportsPersistentPermissions) return false
+    const devices = await navigator.bluetooth.getDevices()
+    if (devices.length === 0) return false
+    const lastId = localStorage.getItem(LAST_DEVICE_ID_KEY)
+    const device = devices.find((d) => d.id === lastId) ?? devices[0]
+
+    this.listener.onConnection?.({ kind: 'connecting' })
+    this.device = device
+    this.listener.onDeviceName?.(device.name ?? 'AICE Lite')
+    device.addEventListener('gattserverdisconnected', this.handleDisconnected)
+
+    try {
+      await this.waitForAdvertisementOrSkip(device)
+      await this.attach(device)
+      return true
+    } catch {
+      device.removeEventListener('gattserverdisconnected', this.handleDisconnected)
+      this.device = null
+      this.listener.onConnection?.({ kind: 'disconnected' })
+      return false
+    }
+  }
+
+  /**
+   * Confirms a previously-paired device is actually nearby before calling
+   * gatt.connect() — connecting blind to a device that's out of range or
+   * powered off can hang for a long time. `watchAdvertisements` is itself
+   * still flag-gated on some Chrome channels, so this degrades to a no-op
+   * (letting `attach` try a direct connect) whenever it isn't available.
+   */
+  private async waitForAdvertisementOrSkip(device: BluetoothDevice): Promise<void> {
+    if (typeof device.watchAdvertisements !== 'function') return
+    const controller = new AbortController()
+    await new Promise<void>((resolve) => {
+      const finish = (): void => {
+        controller.abort()
+        resolve()
+      }
+      const timer = setTimeout(finish, AUTO_RECONNECT_TIMEOUT_MS)
+      device.addEventListener(
+        'advertisementreceived',
+        () => {
+          clearTimeout(timer)
+          finish()
+        },
+        { once: true },
+      )
+      device.watchAdvertisements({ signal: controller.signal }).catch(finish)
+    })
   }
 
   private handleDisconnected = (): void => {
@@ -120,6 +200,7 @@ export class AiceBleClient {
     const gatt = device.gatt
     if (gatt === undefined) throw new Error('device has no GATT server')
     const server = await gatt.connect()
+    localStorage.setItem(LAST_DEVICE_ID_KEY, device.id)
     const service = await server.getPrimaryService(SERVICE_UUID)
     this.controlChar = await service.getCharacteristic(CHAR_CONTROL_UUID)
     const notifyChar = await service.getCharacteristic(CHAR_NOTIFY_UUID)

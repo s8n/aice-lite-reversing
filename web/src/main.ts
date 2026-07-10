@@ -143,6 +143,11 @@ function main(): void {
     })
   })
 
+  // On browsers with Persistent Device Permissions, skip the chooser and
+  // try the last device automatically; falls through to the manual
+  // Connect button if that's unsupported or the device isn't reachable.
+  void client.tryAutoReconnect()
+
   renderRoute()
 }
 
