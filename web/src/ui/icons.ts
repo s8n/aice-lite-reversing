@@ -34,9 +34,9 @@ function path(d: string): SVGPathElement {
 function label(content: string): SVGTextElement {
   const node = document.createElementNS(NS, 'text') as SVGTextElement
   node.setAttribute('x', '12')
-  node.setAttribute('y', '15')
+  node.setAttribute('y', '16.5')
   node.setAttribute('text-anchor', 'middle')
-  node.setAttribute('font-size', '9')
+  node.setAttribute('font-size', '12.5')
   node.setAttribute('font-weight', '700')
   node.setAttribute('stroke', 'none')
   node.setAttribute('fill', 'currentColor')
