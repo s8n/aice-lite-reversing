@@ -269,10 +269,10 @@ the byte(s) below, recompute the CRC over the edited payload, write to `ff04`.
 | **Power off** | `buf[6]` | `3` |
 | **Pause** | `buf[6]` | `1` (paused/idle) |
 | **Resume** | `buf[6]` | `2` (running) |
-| **Set mode** | `buf[10]` | **`1`=cooling, `2`=heating, `3`=wind, `4`=AI** (send codes; device echoes AI as `6`). Refused only while off (`buf[6]==3`). |
-| **Temp up / down** | `buf[12]` | `± 1`, clamped to the mode range. Requires running; fan mode has no target temp. |
-| **Wind level** | `buf[13]` | `0–100`, from the drag ratio |
-| **Mode option** | `buf[14]` | `1`=Silent, `2`=Hot Pack, `3`=Cooling First, `4`=Low Power; **`0xFF` to clear** (§5b) |
+| **Set mode** | `buf[10]` | **`1`=cooling, `2`=heating, `3`=wind, `4`=AI** (send codes; device echoes AI as `6`). Requires running (`buf[6]==2`), refused while paused or off. |
+| **Temp up / down** | `buf[12]` | `± 1`, clamped to the mode range. Requires running; fan mode has no target temp. (Requires running, refused while paused/off) |
+| **Wind level** | `buf[13]` | `0–100`, from the drag ratio (Requires running, refused while paused/off) |
+| **Mode option** | `buf[14]` | `1`=Silent, `2`=Hot Pack, `3`=Cooling First, `4`=Low Power; **`0xFF` to clear** (§5b) (requires running, refused while paused/off) |
 
 So, e.g., to **turn cooling on at 22 °C, wind 41**, take the current state, set
 `buf[0..3]=FF FF FF FF, buf[6]=2, buf[10]=1, buf[12]=22, buf[13]=41`, wrap in the §3
@@ -319,8 +319,7 @@ retracted — see §5c.
 ### 5b. Payload[14] — mode options selector  *(corrected from live capture)*
 
 `payload[14]` selects one of four **mutually exclusive** options (they share the
-single byte). Available whenever the device is powered (running or paused);
-refused only when off.
+single byte). Available whenever the device is running (not paused or off).
 
 | option | i18n key | `buf[14]` value | notes |
 |---|---|---|---|
