@@ -70,14 +70,21 @@ export class AiceBleClient {
   /** Requires a user gesture (e.g. a click handler) — Chrome rejects requestDevice otherwise. */
   async connect(): Promise<void> {
     this.listener.onConnection?.({ kind: 'connecting' })
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: 'LH-' }, { services: [SERVICE_UUID] }],
-      optionalServices: [SERVICE_UUID, DIS_SERVICE_UUID],
-    })
-    this.device = device
-    this.listener.onDeviceName?.(device.name ?? 'AICE Lite')
-    device.addEventListener('gattserverdisconnected', this.handleDisconnected)
-    await this.attach(device)
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: 'LH-' }, { services: [SERVICE_UUID] }],
+        optionalServices: [SERVICE_UUID, DIS_SERVICE_UUID],
+      })
+      this.device = device
+      this.listener.onDeviceName?.(device.name ?? 'AICE Lite')
+      device.addEventListener('gattserverdisconnected', this.handleDisconnected)
+      await this.attach(device)
+    } catch (error) {
+      // e.g. the user closed the chooser without picking a device — reset
+      // so the Connect button doesn't stay stuck on "Connecting…".
+      this.listener.onConnection?.({ kind: 'disconnected' })
+      throw error
+    }
   }
 
   private handleDisconnected = (): void => {
