@@ -33,6 +33,13 @@ export type ConnectionState =
   | { kind: 'connecting' }
   | { kind: 'connected' }
   | { kind: 'reconnecting' }
+  /**
+   * A background `tryAutoReconnect()` attempt is in flight. Unlike
+   * `connecting`, this must not disable the Connect button — the last
+   * device may simply be out of range, and the user needs to be able to
+   * pick a different one without waiting out the attempt.
+   */
+  | { kind: 'auto-reconnecting' }
 
 export interface AiceBleListener {
   onState?: (state: AiceState | null) => void
@@ -60,6 +67,7 @@ export class AiceBleClient {
   private writeQueue: Promise<void> = Promise.resolve()
   private backoffMs = MIN_BACKOFF_MS
   private reconnecting = false
+  private autoReconnectController: AbortController | null = null
   private listener: AiceBleListener = {}
   private readonly ackGate: AckGate
 
@@ -88,6 +96,7 @@ export class AiceBleClient {
 
   /** Requires a user gesture (e.g. a click handler) — Chrome rejects requestDevice otherwise. */
   async connect(): Promise<void> {
+    this.cancelAutoReconnect()
     this.listener.onConnection?.({ kind: 'connecting' })
     try {
       const device = await navigator.bluetooth.requestDevice({
@@ -113,7 +122,9 @@ export class AiceBleClient {
    * is available. Safe to call unconditionally on startup — it's a no-op
    * (returns false) if the feature is unsupported, nothing was previously
    * granted, or the device can't be reached, leaving the manual Connect
-   * button as the fallback either way.
+   * button as the fallback either way. A manual `connect()` started while
+   * this is still in flight (e.g. the last device is out of range) cancels
+   * it via `cancelAutoReconnect` rather than fighting over connection state.
    */
   async tryAutoReconnect(): Promise<boolean> {
     if (!AiceBleClient.supportsPersistentPermissions) return false
@@ -122,21 +133,48 @@ export class AiceBleClient {
     const lastId = localStorage.getItem(LAST_DEVICE_ID_KEY)
     const device = devices.find((d) => d.id === lastId) ?? devices[0]
 
-    this.listener.onConnection?.({ kind: 'connecting' })
+    const controller = new AbortController()
+    this.autoReconnectController = controller
+    this.listener.onConnection?.({ kind: 'auto-reconnecting' })
     this.device = device
     this.listener.onDeviceName?.(device.name ?? 'AICE Lite')
     device.addEventListener('gattserverdisconnected', this.handleDisconnected)
 
     try {
-      await this.waitForAdvertisementOrSkip(device)
+      await this.waitForAdvertisementOrSkip(device, controller.signal)
+      if (controller.signal.aborted) {
+        device.removeEventListener('gattserverdisconnected', this.handleDisconnected)
+        if (this.device === device) this.device = null
+        return false
+      }
       await this.attach(device)
+      if (controller.signal.aborted) {
+        // A manual connect took over while the GATT connect was in flight
+        // (it can't be cancelled once started) — drop the now-redundant
+        // connection instead of clobbering the manual one's state.
+        device.removeEventListener('gattserverdisconnected', this.handleDisconnected)
+        device.gatt?.disconnect()
+        return false
+      }
       return true
     } catch {
-      device.removeEventListener('gattserverdisconnected', this.handleDisconnected)
-      this.device = null
-      this.listener.onConnection?.({ kind: 'disconnected' })
+      if (!controller.signal.aborted) {
+        device.removeEventListener('gattserverdisconnected', this.handleDisconnected)
+        if (this.device === device) this.device = null
+        this.listener.onConnection?.({ kind: 'disconnected' })
+      }
       return false
+    } finally {
+      if (this.autoReconnectController === controller) this.autoReconnectController = null
     }
+  }
+
+  /** Abandons an in-flight `tryAutoReconnect()` so a manual `connect()` isn't blocked by it. */
+  private cancelAutoReconnect(): void {
+    const controller = this.autoReconnectController
+    if (controller === null) return
+    this.autoReconnectController = null
+    controller.abort()
   }
 
   /**
@@ -145,25 +183,23 @@ export class AiceBleClient {
    * powered off can hang for a long time. `watchAdvertisements` is itself
    * still flag-gated on some Chrome channels, so this degrades to a no-op
    * (letting `attach` try a direct connect) whenever it isn't available.
+   * Also resolves early if `signal` aborts, e.g. because a manual connect
+   * took over.
    */
-  private async waitForAdvertisementOrSkip(device: BluetoothDevice): Promise<void> {
-    if (typeof device.watchAdvertisements !== 'function') return
-    const controller = new AbortController()
+  private async waitForAdvertisementOrSkip(device: BluetoothDevice, signal: AbortSignal): Promise<void> {
+    if (typeof device.watchAdvertisements !== 'function' || signal.aborted) return
+    const watchController = new AbortController()
     await new Promise<void>((resolve) => {
       const finish = (): void => {
-        controller.abort()
+        clearTimeout(timer)
+        watchController.abort()
+        signal.removeEventListener('abort', finish)
         resolve()
       }
       const timer = setTimeout(finish, AUTO_RECONNECT_TIMEOUT_MS)
-      device.addEventListener(
-        'advertisementreceived',
-        () => {
-          clearTimeout(timer)
-          finish()
-        },
-        { once: true },
-      )
-      device.watchAdvertisements({ signal: controller.signal }).catch(finish)
+      device.addEventListener('advertisementreceived', finish, { once: true })
+      signal.addEventListener('abort', finish, { once: true })
+      device.watchAdvertisements({ signal: watchController.signal }).catch(finish)
     })
   }
 
@@ -259,6 +295,7 @@ export class AiceBleClient {
   }
 
   disconnect(): void {
+    this.cancelAutoReconnect()
     this.reconnecting = false
     this.ackGate.reset()
     this.device?.gatt?.disconnect()

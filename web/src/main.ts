@@ -140,6 +140,9 @@ function main(): void {
     onState: (state) => store.onDeviceFrame(state),
     onConnection: (conn) => {
       connected = conn.kind === 'connected'
+      // 'auto-reconnecting' deliberately falls through to the default,
+      // enabled "Connect" state — the last device may be out of range, and
+      // the button must stay usable so the user can pick a different one.
       connectButton.textContent =
         conn.kind === 'connecting' ? 'Connecting…' : conn.kind === 'reconnecting' ? 'Reconnecting…' : 'Connect'
       connectButton.disabled = conn.kind === 'connecting' || conn.kind === 'reconnecting'
