@@ -2,6 +2,8 @@ import { AiceState, TempUnit } from '../protocol/state.ts'
 import { el } from './dom.ts'
 import { icon } from './icons.ts'
 
+const REPO_URL = 'https://github.com/s8n/aice-lite-reversing'
+
 export interface SettingsScreenHandlers {
   onBack: () => void
   onVoice: (on: boolean) => void
@@ -61,6 +63,12 @@ export function mountSettingsScreen(root: HTMLElement, initialName: string, hand
   const debugRow = el('div', { class: 'row clickable' }, el('div', { class: 'row-label' }, 'Debug'))
   debugRow.addEventListener('click', handlers.onOpenDebug)
 
+  const sourceRow = el(
+    'a',
+    { class: 'row clickable', href: REPO_URL, target: '_blank', rel: 'noopener noreferrer' },
+    el('div', { class: 'row-label' }, 'Source code'),
+  )
+
   const disconnectRow = el('div', { class: 'row clickable danger' }, el('div', { class: 'row-label' }, 'Disconnect'))
   disconnectRow.addEventListener('click', handlers.onDisconnect)
 
@@ -79,7 +87,7 @@ export function mountSettingsScreen(root: HTMLElement, initialName: string, hand
       el('div', { class: 'row' }, el('div', { class: 'row-label' }, 'Unit'), unitPicker),
       firmwareRow,
     ),
-    el('div', { class: 'section' }, debugRow, disconnectRow),
+    el('div', { class: 'section' }, debugRow, sourceRow, disconnectRow),
   )
 
   function render(state: AiceState | null, firmware: string | null): void {
