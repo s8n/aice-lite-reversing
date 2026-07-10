@@ -293,7 +293,7 @@ private fun ClimateCard(
                         }
                     } else {
                         Text(
-                            "Wind only",
+                            "Fan only",
                             style = MaterialTheme.typography.titleMedium,
                             color = Ink.Secondary,
                             textAlign = TextAlign.Center,
@@ -417,7 +417,7 @@ private fun WindBar(
             Modifier.fillMaxSize().padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Wind Speed", style = MaterialTheme.typography.titleMedium, color = Ink.Primary)
+            Text("Fan Speed", style = MaterialTheme.typography.titleMedium, color = Ink.Primary)
             Spacer(Modifier.weight(1f))
             Text("$level", style = MaterialTheme.typography.titleMedium, color = Ink.Primary, fontWeight = FontWeight.SemiBold)
         }

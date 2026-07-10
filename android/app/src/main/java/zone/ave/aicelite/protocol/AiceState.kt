@@ -27,7 +27,7 @@ enum class Power(val code: Int) {
 enum class Mode(val code: Int, val sendCode: Int, val label: String) {
     COOLING(1, 1, "Cooling"),
     HEATING(2, 2, "Heating"),
-    FAN(3, 3, "Wind"),
+    FAN(3, 3, "Fan"),
     AI(6, 4, "PID Mode");
 
     /**
@@ -65,7 +65,7 @@ enum class Mode(val code: Int, val sendCode: Int, val label: String) {
  * Pack's `0x02` for "silent off" is what made the device switch to heating.)
  */
 enum class ModeOption(val code: Int, val label: String) {
-    SILENT(0x01, "Silent"),
+    SILENT(0x01, "Quiet"),
     HOT_PACK(0x02, "Hot Pack"),
     COOLING_FIRST(0x03, "Cooling First"),
     LOW_POWER(0x04, "Low Power");

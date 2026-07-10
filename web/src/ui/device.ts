@@ -68,7 +68,7 @@ export function mountDeviceScreen(root: HTMLElement, initialName: string, handle
   const ambient = el('div', { class: 'ambient' })
 
   const windFill = el('div', { class: 'fill' })
-  const windLabel = el('span', {}, 'Wind Speed')
+  const windLabel = el('span', {}, 'Fan Speed')
   const windValue = el('span', {})
   const windBar = el('div', { class: 'wind-bar' }, windFill, el('div', { class: 'label' }, windLabel, windValue))
   const playPauseButton = el('button', { class: 'play-pause-button' }, icon('pause'))
@@ -192,7 +192,7 @@ export function mountDeviceScreen(root: HTMLElement, initialName: string, handle
     windBar.classList.toggle('disabled', !windEnabled)
     windFill.style.width = `${Math.min(100, Math.max(0, state.windLevel))}%`
     windValue.textContent = state.supportsWind ? String(state.windLevel) : '—'
-    windLabel.textContent = state.supportsWind ? 'Wind Speed' : 'No wind in heating'
+    windLabel.textContent = state.supportsWind ? 'Fan Speed' : 'No fan in heating'
 
     playPauseButton.disabled = !state.isPowered
     playPauseButton.replaceChildren(icon(state.isPaused ? 'play' : 'pause'))

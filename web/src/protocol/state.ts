@@ -32,7 +32,7 @@ export const MODE_SEND_CODE: Record<Mode, number> = {
 export const MODE_LABEL: Record<Mode, string> = {
   [Mode.COOLING]: 'Cooling',
   [Mode.HEATING]: 'Heating',
-  [Mode.FAN]: 'Wind',
+  [Mode.FAN]: 'Fan',
   [Mode.AI]: 'PID Mode',
 }
 
@@ -72,7 +72,7 @@ export type ModeOption = (typeof ModeOption)[keyof typeof ModeOption]
 export const MODE_OPTION_NONE_CODE = 0xff
 
 export const MODE_OPTION_LABEL: Record<ModeOption, string> = {
-  [ModeOption.SILENT]: 'Silent',
+  [ModeOption.SILENT]: 'Quiet',
   [ModeOption.HOT_PACK]: 'Hot Pack',
   [ModeOption.COOLING_FIRST]: 'Cooling First',
   [ModeOption.LOW_POWER]: 'Low Power',

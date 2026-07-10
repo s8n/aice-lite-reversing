@@ -56,7 +56,7 @@ export function mountSettingsScreen(root: HTMLElement, initialName: string, hand
   const firmwareRow = el(
     'div',
     { class: 'row' },
-    el('div', { class: 'row-label' }, 'Firmware Update'),
+    el('div', { class: 'row-label' }, 'Firmware Version'),
     firmwareValue,
   )
 
@@ -78,7 +78,7 @@ export function mountSettingsScreen(root: HTMLElement, initialName: string, hand
       'div',
       { class: 'section' },
       el('div', { class: 'row' }, el('div', { class: 'row-label' }, 'Device Name'), deviceNameValue),
-      el('div', { class: 'row' }, el('div', { class: 'row-label' }, 'Sound'), soundSwitch.root),
+      el('div', { class: 'row' }, el('div', { class: 'row-label' }, 'Button Sounds'), soundSwitch.root),
       el('div', { class: 'row' }, el('div', { class: 'row-label' }, 'Light'), lightSwitch.root),
     ),
     el(

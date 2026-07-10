@@ -84,7 +84,7 @@ fun SettingsScreen(
             }
             Divider()
             ToggleRow(
-                label = "Sound",
+                label = "Button Sounds",
                 checked = state?.voiceOn == true,
                 enabled = state != null,
                 onCheckedChange = onVoice,
