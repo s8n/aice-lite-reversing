@@ -97,26 +97,8 @@ object Flags {
     const val VOICE_OFF = 0x02
 }
 
-/**
- * `payload[0]`, believed to discriminate a command from a status report.
- *
- * Observed: the device's unsolicited status frames carry `0x01`, and a frame
- * written back to it carrying that same `0x01` is accepted at the ATT layer and
- * then silently ignored — no state change, no echo.
- *
- * Hypothesis, NOT yet confirmed against hardware: commands must carry `0x02`.
- * `native/aice_probe.py` — the one writer reported to work — stamps
- * `p[0] = 0x02` on every write, and an echo of a command would itself carry
- * `0x02`, which would explain why a capture of echoes makes `[0]` look constant.
- * PROTOCOL.md §5 concluded from that capture that `[0]` should be mirrored;
- * whatever the byte means, mirroring it demonstrably does not work.
- */
-const val STATUS_FRAME: Int = 0x01
-const val COMMAND_FRAME: Int = 0x02
-
 /** Payload indices, named. */
 object Idx {
-    const val STATE = 0
     const val POWER = 6
     const val CHARGE_STATUS = 7
     const val BATTERY = 8
@@ -207,11 +189,6 @@ class AiceState(raw: ByteArray) {
     fun mutate(block: (ByteArray) -> Unit): AiceState = AiceState(raw.copyOf().also(block))
 
     fun withByte(index: Int, value: Int): AiceState = mutate { it[index] = value.toByte() }
-
-    val isCommand: Boolean get() = u(Idx.STATE) == COMMAND_FRAME
-
-    /** Stamp the buffer as a command before it goes on the wire — see [COMMAND_FRAME]. */
-    fun asCommand(): AiceState = if (isCommand) this else withByte(Idx.STATE, COMMAND_FRAME)
 
     fun encode(): ByteArray = AiceCodec.encode(raw)
 

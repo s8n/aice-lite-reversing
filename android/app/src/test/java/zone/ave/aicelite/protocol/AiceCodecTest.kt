@@ -245,49 +245,6 @@ class CommandsTest {
         }
     }
 
-    /**
-     * Observed on a live device: mirroring its own `payload[0] = 0x01` back gets
-     * the frame accepted at the ATT layer and ignored by the firmware — 14
-     * commands sent, zero echoes, nothing moved. That `0x02` is the right stamp
-     * is a hypothesis (see [COMMAND_FRAME]); this only pins the app to sending it.
-     */
-    @Test
-    fun `an outbound command is stamped 0x02 in byte 0`() {
-        val statusFromDevice = AiceState(parseHex("01" + "00000000010201052201" + "1A" + "19" + "35" + "0101")!!)
-        assertEquals(STATUS_FRAME, statusFromDevice.raw[Idx.STATE].toInt())
-        assertFalse(statusFromDevice.isCommand)
-
-        val command = statusFromDevice.asCommand()
-        assertEquals(COMMAND_FRAME, command.raw[Idx.STATE].toInt())
-        assertTrue(command.isCommand)
-
-        // …and stamping must not disturb any other byte, including the unnamed ones.
-        (1 until 16).forEach { i ->
-            assertEquals("byte $i changed", statusFromDevice.raw[i], command.raw[i])
-        }
-    }
-
-    @Test
-    fun `stamping an already-stamped command is a no-op`() {
-        val command = running.asCommand()
-        assertArrayEquals(command.raw, command.asCommand().raw)
-    }
-
-    /** The CRC must cover the stamped byte, not the pre-stamp payload. */
-    @Test
-    fun `the frame crc is computed after byte 0 is stamped`() {
-        val status = AiceState(parseHex("01" + "00000000010201052201" + "1A" + "19" + "35" + "0101")!!)
-        val frame = status.asCommand().encode()
-
-        assertTrue("CRC must verify against the frame as sent", AiceCodec.crcValid(frame))
-        assertEquals(COMMAND_FRAME, frame[4].toInt())
-
-        // A frame CRC'd before stamping would carry the status frame's checksum.
-        val staleCrc = AiceCodec.checksum(status.raw)
-        val sentCrc = (frame[2].toInt() and 0xFF) or ((frame[3].toInt() and 0xFF) shl 8)
-        assertTrue("stale CRC leaked into the frame", staleCrc != sentCrc)
-    }
-
     @Test
     fun `state is immutable across mutations`() {
         val original = running.raw.copyOf()
