@@ -404,6 +404,21 @@ button {
   font-size: 14px;
   line-height: 1.5;
 }
+.flag-hint {
+  max-width: 360px;
+  color: var(--ink-secondary);
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.75;
+}
+.flag-hint code {
+  font-size: 11px;
+  color: var(--ink-secondary);
+  background: var(--surface);
+  padding: 1px 5px;
+  border-radius: 5px;
+  overflow-wrap: anywhere;
+}
 
 .section {
   background: var(--surface);

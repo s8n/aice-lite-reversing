@@ -9,9 +9,34 @@ import { el } from './ui/dom.ts'
 
 type Route = 'device' | 'settings' | 'debug'
 
+const NEW_PERMISSIONS_BACKEND_FLAG_URL = 'chrome://flags/#enable-web-bluetooth-new-permissions-backend'
+
 function currentRoute(): Route {
   const hash = window.location.hash.replace('#', '')
   return hash === 'settings' || hash === 'debug' ? hash : 'device'
+}
+
+function chromiumMajorVersion(): number | null {
+  const match = /\bChrome\/(\d+)/.exec(navigator.userAgent)
+  return match === null ? null : Number(match[1])
+}
+
+/**
+ * Persistent Device Permissions (the auto-reconnect path in ble/client.ts)
+ * shipped behind a flag before it was on by default — nudge Chromium users
+ * new enough to have the flag, but who don't already have it enabled.
+ */
+function buildFlagHint(): HTMLElement | null {
+  if (AiceBleClient.supportsPersistentPermissions) return null
+  const version = chromiumMajorVersion()
+  if (version === null || version <= 83) return null
+  return el(
+    'p',
+    { class: 'flag-hint' },
+    'Chromium 83+ detected — enable ',
+    el('code', {}, NEW_PERMISSIONS_BACKEND_FLAG_URL),
+    ' for automatic reconnects to the last device.',
+  )
 }
 
 function renderUnsupported(app: HTMLElement): void {
@@ -52,6 +77,7 @@ function main(): void {
     el('h1', {}, 'PIDCE LITE'),
     el('p', { class: 'unsupported-note' }, 'Connect to your AICE Lite neck air conditioner.'),
     connectButton,
+    buildFlagHint(),
   )
 
   const deviceRoot = el('div', { class: 'screen' })
